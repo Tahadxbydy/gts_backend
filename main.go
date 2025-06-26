@@ -37,10 +37,16 @@ func main() {
 	// Setup graceful shutdown
 	setupGracefulShutdown(cleanupService)
 
-	fmt.Println("Server started at http://localhost:8080")
-	fmt.Println("Audio files will be automatically deleted after 1 hour")
-	fmt.Println("Check /status for cleanup service information")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback for local testing
+	}
+
+	log.Printf("Server started at http://localhost:%s\n", port)
+	log.Println("Audio files will be automatically deleted after 1 hour")
+	log.Println("Check /status for cleanup service information")
+
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 // setupGracefulShutdown handles graceful shutdown of the application
