@@ -42,7 +42,8 @@ func main() {
 		port = "8080" // fallback for local testing
 	}
 
-	log.Printf("Server started at http://localhost:%s\n", port)
+	log.Printf("Server started on port %s\n", port)
+
 	log.Println("Audio files will be automatically deleted after 1 hour")
 	log.Println("Check /status for cleanup service information")
 
