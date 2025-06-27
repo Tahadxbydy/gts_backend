@@ -1,24 +1,21 @@
 FROM golang:1.21-alpine
 
-# Install system deps
-RUN apk add --no-cache ffmpeg python3 py3-pip && \
-    pip3 install yt-dlp
-
 # Set working dir
 WORKDIR /app
 
-# Download Go dependencies
+# Copy static binaries
+COPY bin/yt-dlp /usr/local/bin/yt-dlp
+COPY bin/ffmpeg /usr/local/bin/ffmpeg
+RUN chmod +x /usr/local/bin/yt-dlp /usr/local/bin/ffmpeg
+
+# Copy Go project
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source
 COPY . .
 
 # Build Go app
 RUN go build -o main .
 
-# Expose app port
 EXPOSE 8080
-
-# Start server
 CMD ["./main"]
