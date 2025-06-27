@@ -1,4 +1,4 @@
-FROM golang:1.21.5-slim
+FROM golang:1.21-slim-bullseye
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
