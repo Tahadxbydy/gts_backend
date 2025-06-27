@@ -1,27 +1,24 @@
-FROM golang:1.21-bullseye
+FROM golang:1.21-alpine
 
-# Install ffmpeg, python3, pip, and yt-dlp
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ffmpeg python3 python3-pip && \
-    pip3 install yt-dlp && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install system deps
+RUN apk add --no-cache ffmpeg python3 py3-pip && \
+    pip3 install yt-dlp
 
-# Set workdir
+# Set working dir
 WORKDIR /app
 
-# Cache Go dependencies
+# Download Go dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy app code
+# Copy source
 COPY . .
 
-# Build the app
+# Build Go app
 RUN go build -o main .
 
 # Expose app port
 EXPOSE 8080
 
-# Run the app
+# Start server
 CMD ["./main"]
