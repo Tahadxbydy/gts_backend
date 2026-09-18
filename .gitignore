@@ -1,2 +1,19 @@
-.vscode
-output/
+# Binaries
+gts
+gts_backend
+*.exe
+
+# Storage (temp audio files — never commit)
+storage/
+
+# Go build cache
+/tmp/
+*.test
+*.out
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
