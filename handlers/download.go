@@ -31,17 +31,21 @@ func NewDownloadHandler(extractor *services.ExtractionService) *DownloadHandler 
 func (h *DownloadHandler) Handle(c echo.Context) error {
 	id := c.Param("id")
 	if id == "" {
-		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "missing_id",
-			Message: "path parameter ':id' is required",
+		return c.JSON(http.StatusBadRequest, models.BaseResponse{
+			Data:       nil,
+			Message:    "path parameter ':id' is required",
+			Success:    false,
+			StatusCode: http.StatusBadRequest,
 		})
 	}
 
 	meta, found := h.extractor.GetByID(id)
 	if !found {
-		return c.JSON(http.StatusNotFound, models.ErrorResponse{
-			Error:   "not_found",
-			Message: "no audio file found with the given ID; it may have expired",
+		return c.JSON(http.StatusNotFound, models.BaseResponse{
+			Data:       nil,
+			Message:    "no audio file found with the given ID; it may have expired",
+			Success:    false,
+			StatusCode: http.StatusNotFound,
 		})
 	}
 

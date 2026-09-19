@@ -38,9 +38,9 @@ func main() {
 	e.HideBanner = false
 
 	// Global middleware
-	e.Use(middleware.Logger())  // structured request/response logging
-	e.Use(middleware.Recover()) // recover from panics; return 500 instead of crashing
-	e.Use(middleware.CORS())    // allow Flutter app on a different origin
+	e.Use(middleware.RequestLogger()) // structured request/response logging
+	e.Use(middleware.Recover())       // recover from panics; return 500 instead of crashing
+	e.Use(middleware.CORS())          // allow Flutter app on a different origin
 
 	// ── Route Registration ────────────────────────────────────────────────────
 	routes.Register(e, extractor)

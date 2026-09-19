@@ -30,16 +30,20 @@ func NewExtractHandler(extractor *services.ExtractionService) *ExtractHandler {
 func (h *ExtractHandler) Handle(c echo.Context) error {
 	var req models.AudioRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "request body must be valid JSON with a 'url' field",
+		return c.JSON(http.StatusBadRequest, models.BaseResponse{
+			Data:       nil,
+			Message:    "request body must be valid JSON with a 'url' field",
+			Success:    false,
+			StatusCode: http.StatusBadRequest,
 		})
 	}
 
 	if req.URL == "" {
-		return c.JSON(http.StatusUnprocessableEntity, models.ErrorResponse{
-			Error:   "missing_url",
-			Message: "'url' field is required",
+		return c.JSON(http.StatusUnprocessableEntity, models.BaseResponse{
+			Data:       nil,
+			Message:    "'url' field is required",
+			Success:    false,
+			StatusCode: http.StatusBadRequest,
 		})
 	}
 
@@ -48,9 +52,11 @@ func (h *ExtractHandler) Handle(c echo.Context) error {
 	meta, err := h.extractor.Extract(&req)
 	if err != nil {
 		c.Logger().Errorf("extraction failed for url=%s: %v", req.URL, err)
-		return c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "extraction_failed",
-			Message: err.Error(),
+		return c.JSON(http.StatusInternalServerError, models.BaseResponse{
+			Data:       nil,
+			Message:    "extraction failed",
+			Success:    false,
+			StatusCode: http.StatusBadRequest,
 		})
 	}
 
@@ -62,5 +68,10 @@ func (h *ExtractHandler) Handle(c echo.Context) error {
 		CreatedAt:   meta.CreatedAt,
 	}
 
-	return c.JSON(http.StatusCreated, resp)
+	return c.JSON(http.StatusCreated, models.BaseResponse{
+		Data:       resp,
+		Message:    "extraction successful",
+		Success:    true,
+		StatusCode: http.StatusCreated,
+	})
 }

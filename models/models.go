@@ -29,9 +29,3 @@ type AudioMetadata struct {
 	FileSize  int64     `json:"file_size"`  // Bytes
 	CreatedAt time.Time `json:"created_at"` // Used by the cleanup ticker
 }
-
-// ErrorResponse is the standard error envelope returned by all handlers.
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}

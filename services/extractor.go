@@ -2,10 +2,13 @@
 package services
 
 import (
+	"bytes"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,10 +42,22 @@ func NewExtractionService() (*ExtractionService, error) {
 	}, nil
 }
 
+// cleanURL removes playlist query parameters so yt-dlp strictly processes a single video.
+func cleanURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	q := u.Query()
+	q.Del("list")
+	q.Del("index")
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
 // Extract downloads audio from the given YouTube URL using yt-dlp.
 // It blocks until yt-dlp finishes (or fails) and returns populated AudioMetadata.
 func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMetadata, error) {
-	// Acquire a concurrency slot.
 	s.semaphore <- struct{}{}
 	defer func() { <-s.semaphore }()
 
@@ -51,48 +66,52 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 		format = defaultFormat
 	}
 
+	targetURL := cleanURL(req.URL)
 	id := uuid.New().String()
 	outputTemplate := filepath.Join(storageDir, id+".%(ext)s")
 
-	// Build yt-dlp arguments:
-	//   -x                 : extract audio only
-	//   --audio-format     : convert to the requested format
-	//   --audio-quality 0  : best quality
-	//   --no-playlist      : ignore playlists, download only the single video
-	//   --print-json       : print JSON metadata to stdout (we ignore it here but useful for debugging)
-	//   -o <template>      : output filename template
-	args := []string{
+	// Step 1: Fetch Video Title First (Fast Metadata Call)
+	titleCmd := exec.Command("yt-dlp", "--no-playlist", "--print", "%(title)s", targetURL)
+	var titleOut bytes.Buffer
+	titleCmd.Stdout = &titleOut
+	if err := titleCmd.Run(); err != nil {
+		// Fallback to ID if title fetch fails
+		titleOut.WriteString(id)
+	}
+	title := strings.TrimSpace(titleOut.String())
+	if title == "" {
+		title = id
+	}
+
+	// Step 2: Download & Convert Audio File
+	downloadArgs := []string{
+		"--no-playlist",
 		"-x",
 		"--audio-format", format,
 		"--audio-quality", "0",
-		"--no-playlist",
-		"--ffmpeg-location", "/usr/local/bin", // common homebrew path; adjust if needed
+		"--ffmpeg-location", "/opt/homebrew/bin",
 		"-o", outputTemplate,
-		req.URL,
+		targetURL,
 	}
 
-	cmd := exec.Command("yt-dlp", args...)
-	cmd.Stdout = os.Stdout // pipe yt-dlp output to server logs
-	cmd.Stderr = os.Stderr
+	cmd := exec.Command("yt-dlp", downloadArgs...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("yt-dlp extraction failed: %w", err)
+		return nil, fmt.Errorf("yt-dlp extraction failed: %s", stderr.String())
 	}
 
-	// Resolve the actual file path (yt-dlp may alter the extension).
+	// Step 3: Resolve Actual File Path from Storage
 	filePath, err := resolveFilePath(storageDir, id, format)
 	if err != nil {
 		return nil, err
 	}
 
-	// Stat the file to get its size.
 	info, err := os.Stat(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not stat output file: %w", err)
 	}
-
-	// Extract the title from the filename as a fallback.
-	title := extractTitle(filePath)
 
 	meta := &models.AudioMetadata{
 		ID:        id,
