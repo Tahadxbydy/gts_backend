@@ -56,19 +56,37 @@ func cleanURL(rawURL string) string {
 	return u.String()
 }
 
-// getBypassArgs returns flags to bypass YouTube blocks, appending --cookies if cookies.txt exists.
-func getBypassArgs() []string {
-	args := []string{
-		"--extractor-args", "youtube:player_client=mweb,android",
+// resolveCookies returns the flags for yt-dlp cookies if found on disk or environment.
+func resolveCookies() []string {
+	// 1. Check raw cookie content environment variable
+	if content := os.Getenv("YOUTUBE_COOKIES_CONTENT"); strings.TrimSpace(content) != "" {
+		tmpPath := filepath.Join(os.TempDir(), "yt_cookies.txt")
+		if err := os.WriteFile(tmpPath, []byte(content), 0o600); err == nil {
+			return []string{"--cookies", tmpPath}
+		}
 	}
 
-	cookiesPath := os.Getenv("YOUTUBE_COOKIES_PATH")
+	// 2. Check explicitly provided cookie path or default local path
+	cookiesPath := os.Getenv("./cookies.txt")
 	if cookiesPath == "" {
 		cookiesPath = defaultCookiesPath
 	}
 
 	if _, err := os.Stat(cookiesPath); err == nil {
-		args = append(args, "--cookies", cookiesPath)
+		return []string{"--cookies", cookiesPath}
+	}
+
+	return nil
+}
+
+// getBypassArgs constructs arguments to bypass YouTube bot detection.
+func getBypassArgs() []string {
+	args := []string{
+		"--extractor-args", "youtube:player_client=mweb,android",
+	}
+
+	if cookieFlags := resolveCookies(); len(cookieFlags) > 0 {
+		args = append(args, cookieFlags...)
 	}
 
 	return args
