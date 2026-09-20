@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	storageDir     = "./storage"
-	defaultFormat  = "mp3"
-	maxConcurrency = 5 // maximum simultaneous yt-dlp processes
+	storageDir         = "./storage"
+	defaultFormat      = "mp3"
+	maxConcurrency     = 5 // maximum simultaneous yt-dlp processes
+	defaultCookiesPath = "./cookies.txt"
 )
 
 // ExtractionService handles audio extraction from YouTube URLs via yt-dlp.
@@ -55,6 +56,19 @@ func cleanURL(rawURL string) string {
 	return u.String()
 }
 
+// getAuthArgs checks if a cookies file exists on disk and returns the corresponding yt-dlp flags.
+func getAuthArgs() []string {
+	cookiesPath := os.Getenv("YOUTUBE_COOKIES_PATH")
+	if cookiesPath == "" {
+		cookiesPath = defaultCookiesPath
+	}
+
+	if _, err := os.Stat(cookiesPath); err == nil {
+		return []string{"--cookies", cookiesPath}
+	}
+	return nil
+}
+
 // Extract downloads audio from the given YouTube URL using yt-dlp.
 // It blocks until yt-dlp finishes (or fails) and returns populated AudioMetadata.
 func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMetadata, error) {
@@ -70,20 +84,22 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	id := uuid.New().String()
 	outputTemplate := filepath.Join(storageDir, id+".%(ext)s")
 
-	// Common extractor flags to bypass YouTube cloud blocks (e.g. on Render/AWS)
-	clientBypassArgs := []string{
+	// Base client args + optional cookies file flags
+	bypassArgs := []string{
 		"--extractor-args", "youtube:player_client=android,web",
 	}
+	if authFlags := getAuthArgs(); len(authFlags) > 0 {
+		bypassArgs = append(bypassArgs, authFlags...)
+	}
 
-	// Step 1: Fetch Video Title First (Fast Metadata Call)
-	titleArgs := append([]string{"--no-playlist"}, clientBypassArgs...)
+	// Step 1: Fetch Video Title First
+	titleArgs := append([]string{"--no-playlist"}, bypassArgs...)
 	titleArgs = append(titleArgs, "--print", "%(title)s", targetURL)
 
 	titleCmd := exec.Command("yt-dlp", titleArgs...)
 	var titleOut bytes.Buffer
 	titleCmd.Stdout = &titleOut
 	if err := titleCmd.Run(); err != nil {
-		// Fallback to ID if title fetch fails
 		titleOut.WriteString(id)
 	}
 	title := strings.TrimSpace(titleOut.String())
@@ -92,14 +108,13 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	}
 
 	// Step 2: Download & Convert Audio File
-	// Note: --ffmpeg-location is omitted so yt-dlp relies on system PATH across both Linux and Mac.
 	downloadArgs := []string{
 		"--no-playlist",
 		"-x",
 		"--audio-format", format,
 		"--audio-quality", "0",
 	}
-	downloadArgs = append(downloadArgs, clientBypassArgs...)
+	downloadArgs = append(downloadArgs, bypassArgs...)
 	downloadArgs = append(downloadArgs, "-o", outputTemplate, targetURL)
 
 	cmd := exec.Command("yt-dlp", downloadArgs...)
@@ -171,15 +186,13 @@ func (s *ExtractionService) AllMetadata() []*models.AudioMetadata {
 	return list
 }
 
-// resolveFilePath finds the actual file yt-dlp wrote by globbing the storage dir.
+// resolveFilePath finds the actual file yt-dlp wrote by searching the storage directory.
 func resolveFilePath(dir, id, format string) (string, error) {
-	// First try the exact expected path.
 	exact := filepath.Join(dir, id+"."+format)
 	if _, err := os.Stat(exact); err == nil {
 		return exact, nil
 	}
 
-	// Fall back to a glob in case yt-dlp used a different extension.
 	matches, err := filepath.Glob(filepath.Join(dir, id+".*"))
 	if err != nil {
 		return "", fmt.Errorf("glob error: %w", err)
