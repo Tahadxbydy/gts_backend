@@ -70,8 +70,13 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	id := uuid.New().String()
 	outputTemplate := filepath.Join(storageDir, id+".%(ext)s")
 
-	// Step 1: Fetch Video Title First (Fast Metadata Call)
-	titleCmd := exec.Command("yt-dlp", "--no-playlist", "--print", "%(title)s", targetURL)
+	// Step 1: Fetch Video Title First (Fast Metadata Call with Client Bypass)
+	titleCmd := exec.Command("yt-dlp",
+		"--no-playlist",
+		"--extractor-args", "youtube:player_client=android,web",
+		"--print", "%(title)s",
+		targetURL,
+	)
 	var titleOut bytes.Buffer
 	titleCmd.Stdout = &titleOut
 	if err := titleCmd.Run(); err != nil {
@@ -84,12 +89,13 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	}
 
 	// Step 2: Download & Convert Audio File
+	// Note: --ffmpeg-location is omitted so yt-dlp automatically locates ffmpeg in system PATH.
 	downloadArgs := []string{
 		"--no-playlist",
 		"-x",
 		"--audio-format", format,
 		"--audio-quality", "0",
-		"--ffmpeg-location", "/opt/homebrew/bin",
+		"--extractor-args", "youtube:player_client=android,web", // Bypass YouTube cloud blocks
 		"-o", outputTemplate,
 		targetURL,
 	}
@@ -163,7 +169,7 @@ func (s *ExtractionService) AllMetadata() []*models.AudioMetadata {
 	return list
 }
 
-// resolveFilePath finds the actual file yt-dlp wrote by globbing the storage dir.
+// resolveFilePath finds the actual file yt-dlp wrote by searching the storage directory.
 func resolveFilePath(dir, id, format string) (string, error) {
 	// First try the exact expected path.
 	exact := filepath.Join(dir, id+"."+format)
@@ -182,9 +188,7 @@ func resolveFilePath(dir, id, format string) (string, error) {
 	return matches[0], nil
 }
 
-// extractTitle derives a human-readable title from the file name (sans extension and UUID).
-// yt-dlp names files after the video title, so this is a no-op in most cases.
-// Since we use an ID-based template, the title will just be the ID unless overridden later.
+// extractTitle derives a human-readable title from the file name.
 func extractTitle(filePath string) string {
 	base := filepath.Base(filePath)
 	ext := filepath.Ext(base)
