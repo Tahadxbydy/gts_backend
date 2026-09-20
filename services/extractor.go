@@ -81,10 +81,18 @@ func resolveCookies() []string {
 
 // getBypassArgs constructs arguments to bypass YouTube bot detection.
 func getBypassArgs() []string {
-	args := []string{
-		"--extractor-args", "youtube:player_client=mweb,android",
+	var args []string
+
+	// 1. Inject automated PO Token Provider endpoint if configured
+	poProviderURL := os.Getenv("PO_TOKEN_PROVIDER_URL")
+	if poProviderURL != "" {
+		args = append(args, "--extractor-args", fmt.Sprintf("youtube:po_token=web+%s", poProviderURL))
+	} else {
+		// Fallback client strategy when no token provider is attached
+		args = append(args, "--extractor-args", "youtube:player_client=web,ios")
 	}
 
+	// 2. Attach cookies if available
 	if cookieFlags := resolveCookies(); len(cookieFlags) > 0 {
 		args = append(args, cookieFlags...)
 	}

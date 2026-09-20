@@ -16,7 +16,7 @@ func Register(e *echo.Echo, extractor *services.ExtractionService) {
 	downloadHandler := handlers.NewDownloadHandler(extractor)
 
 	e.GET("/", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+		return c.JSON(http.StatusOK, "Yahan Gand Maranay aaya ho?")
 	})
 
 	// ── Health ────────────────────────────────────────────────────────────────
