@@ -56,7 +56,7 @@ func cleanURL(rawURL string) string {
 	return u.String()
 }
 
-// getBypassArgs builds the yt-dlp flags for client overrides and optional cookies.
+// getBypassArgs returns flags to bypass YouTube blocks, appending --cookies if cookies.txt exists.
 func getBypassArgs() []string {
 	args := []string{
 		"--extractor-args", "youtube:player_client=mweb,android",
@@ -67,7 +67,6 @@ func getBypassArgs() []string {
 		cookiesPath = defaultCookiesPath
 	}
 
-	// Check if cookies file exists on disk
 	if _, err := os.Stat(cookiesPath); err == nil {
 		args = append(args, "--cookies", cookiesPath)
 	}
@@ -100,7 +99,6 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	var titleOut bytes.Buffer
 	titleCmd.Stdout = &titleOut
 	if err := titleCmd.Run(); err != nil {
-		// Fallback to ID if title fetch fails
 		titleOut.WriteString(id)
 	}
 	title := strings.TrimSpace(titleOut.String())
@@ -187,7 +185,7 @@ func (s *ExtractionService) AllMetadata() []*models.AudioMetadata {
 	return list
 }
 
-// resolveFilePath finds the actual file yt-dlp wrote by globbing the storage dir.
+// resolveFilePath finds the actual file yt-dlp wrote by searching the storage directory.
 func resolveFilePath(dir, id, format string) (string, error) {
 	exact := filepath.Join(dir, id+"."+format)
 	if _, err := os.Stat(exact); err == nil {
