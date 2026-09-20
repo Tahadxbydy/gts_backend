@@ -1,6 +1,7 @@
 # Binaries
 gts
 gts_backend
+gts-server
 *.exe
 
 # Storage (temp audio files — never commit)
