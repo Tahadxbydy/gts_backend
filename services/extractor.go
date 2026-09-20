@@ -56,17 +56,23 @@ func cleanURL(rawURL string) string {
 	return u.String()
 }
 
-// getAuthArgs checks if a cookies file exists on disk and returns the corresponding yt-dlp flags.
-func getAuthArgs() []string {
+// getBypassArgs builds the yt-dlp flags for client overrides and optional cookies.
+func getBypassArgs() []string {
+	args := []string{
+		"--extractor-args", "youtube:player_client=mweb,android",
+	}
+
 	cookiesPath := os.Getenv("YOUTUBE_COOKIES_PATH")
 	if cookiesPath == "" {
 		cookiesPath = defaultCookiesPath
 	}
 
+	// Check if cookies file exists on disk
 	if _, err := os.Stat(cookiesPath); err == nil {
-		return []string{"--cookies", cookiesPath}
+		args = append(args, "--cookies", cookiesPath)
 	}
-	return nil
+
+	return args
 }
 
 // Extract downloads audio from the given YouTube URL using yt-dlp.
@@ -84,15 +90,9 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	id := uuid.New().String()
 	outputTemplate := filepath.Join(storageDir, id+".%(ext)s")
 
-	// Base client args + optional cookies file flags
-	bypassArgs := []string{
-		"--extractor-args", "youtube:player_client=android,web",
-	}
-	if authFlags := getAuthArgs(); len(authFlags) > 0 {
-		bypassArgs = append(bypassArgs, authFlags...)
-	}
+	bypassArgs := getBypassArgs()
 
-	// Step 1: Fetch Video Title First
+	// Step 1: Fetch Video Title First (Fast Metadata Call)
 	titleArgs := append([]string{"--no-playlist"}, bypassArgs...)
 	titleArgs = append(titleArgs, "--print", "%(title)s", targetURL)
 
@@ -100,6 +100,7 @@ func (s *ExtractionService) Extract(req *models.AudioRequest) (*models.AudioMeta
 	var titleOut bytes.Buffer
 	titleCmd.Stdout = &titleOut
 	if err := titleCmd.Run(); err != nil {
+		// Fallback to ID if title fetch fails
 		titleOut.WriteString(id)
 	}
 	title := strings.TrimSpace(titleOut.String())
@@ -186,7 +187,7 @@ func (s *ExtractionService) AllMetadata() []*models.AudioMetadata {
 	return list
 }
 
-// resolveFilePath finds the actual file yt-dlp wrote by searching the storage directory.
+// resolveFilePath finds the actual file yt-dlp wrote by globbing the storage dir.
 func resolveFilePath(dir, id, format string) (string, error) {
 	exact := filepath.Join(dir, id+"."+format)
 	if _, err := os.Stat(exact); err == nil {

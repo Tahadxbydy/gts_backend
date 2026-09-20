@@ -2,6 +2,8 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/tahakhan/gts_backend/handlers"
 	"github.com/tahakhan/gts_backend/services"
@@ -12,6 +14,10 @@ import (
 func Register(e *echo.Echo, extractor *services.ExtractionService) {
 	extractHandler := handlers.NewExtractHandler(extractor)
 	downloadHandler := handlers.NewDownloadHandler(extractor)
+
+	e.GET("/", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	})
 
 	// ── Health ────────────────────────────────────────────────────────────────
 	e.GET("/health", handlers.HealthHandler)
