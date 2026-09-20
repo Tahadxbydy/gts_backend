@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/tahakhan/gts_backend/models"
 )
 
 // HealthResponse is returned by the health-check endpoint.
@@ -17,10 +18,16 @@ type HealthResponse struct {
 
 // HealthHandler handles GET /health — used by load-balancers and monitoring tools.
 func HealthHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, HealthResponse{
+	res := HealthResponse{
 		Status:    "ok",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Service:   "gts-backend",
 		Version:   "1.0.0",
+	}
+	return c.JSON(http.StatusOK, models.BaseResponse{
+		Message:    "Service is healthy",
+		Data:       res,
+		StatusCode: http.StatusOK,
+		Success:    true,
 	})
 }
