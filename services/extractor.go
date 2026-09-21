@@ -84,11 +84,12 @@ func resolveCookies() []string {
 // getBypassArgs dynamically constructs yt-dlp flags for JS runtimes, PO token provider, and cookies.
 // getBypassArgs dynamically constructs yt-dlp flags for JS runtimes, PO token provider, and cookies.
 // getBypassArgs dynamically constructs yt-dlp flags for JS runtimes, PO token provider, and cookies.
+// getBypassArgs dynamically constructs yt-dlp flags for JS runtimes, PO token provider, and cookies.
 func getBypassArgs() []string {
 	var args []string
 
-	// Explicitly enable Node.js as the JS runtime solver for yt-dlp
-	args = append(args, "--js-runtimes", "node")
+	// Explicitly tell yt-dlp the exact binary path for Node
+	args = append(args, "--js-runtimes", "node:/usr/bin/node")
 
 	// Attach PO Token Provider URL if environment variable is present
 	poProviderURL := os.Getenv("PO_TOKEN_PROVIDER_URL")
