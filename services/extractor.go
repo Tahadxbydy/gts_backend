@@ -82,23 +82,24 @@ func resolveCookies() []string {
 // getBypassArgs constructs arguments to bypass YouTube bot detection.
 // getBypassArgs dynamically constructs yt-dlp flags for PO token provider and cookies.
 // getBypassArgs dynamically constructs yt-dlp flags for JS runtimes, PO token provider, and cookies.
+// getBypassArgs dynamically constructs yt-dlp flags for JS runtimes, PO token provider, and cookies.
 func getBypassArgs() []string {
 	var args []string
 
-	// 1. Force yt-dlp to use node or deno JS runtimes
-	args = append(args, "--js-runtimes", "node,deno")
+	// 1. Specify JS runtimes separately (or let yt-dlp auto-detect Node/Deno in PATH)
+	args = append(args, "--js-runtimes", "node", "--js-runtimes", "deno")
 
-	// 2. Attach PO Token Provider URL if environment variable is present
+	// 2. Attach PO Token Provider URL if set in environment
 	poProviderURL := os.Getenv("PO_TOKEN_PROVIDER_URL")
 	if poProviderURL != "" {
 		// Format: youtube:po_token=web+https://bgutil-ytdlp-pot-provider-aurp.onrender.com/token
 		args = append(args, "--extractor-args", fmt.Sprintf("youtube:po_token=web+%s", poProviderURL))
 	} else {
-		// Fallback player client selection
+		// Fallback client selection
 		args = append(args, "--extractor-args", "youtube:player_client=web,ios")
 	}
 
-	// 3. Attach Cookies if present
+	// 3. Attach Cookies if available
 	if cookieFlags := resolveCookies(); len(cookieFlags) > 0 {
 		args = append(args, cookieFlags...)
 	}
