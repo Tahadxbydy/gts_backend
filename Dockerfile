@@ -14,15 +14,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o gts-server main.go
 # Production runtime stage
 FROM alpine:3.19
 
-# Install runtime dependencies: ffmpeg, nodejs (JS runtime solver), python3, ca-certificates, and curl
+# Install runtime dependencies: ffmpeg, nodejs, python3, ca-certificates, curl, and deno
 RUN apk add --no-cache \
     ffmpeg \
     nodejs \
     python3 \
     ca-certificates \
-    curl
+    curl \
+    deno
 
-# Download the latest yt-dlp binary into /usr/local/bin
+# Download the latest yt-dlp binary
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp
 
