@@ -88,7 +88,7 @@ func resolveCookies() []string {
 func getBypassArgs() []string {
 	var args []string
 
-	// Explicitly tell yt-dlp the exact binary path for Node
+	// Explicitly map Node.js binary path so yt-dlp uses it unconditionally
 	args = append(args, "--js-runtimes", "node:/usr/bin/node")
 
 	// Attach PO Token Provider URL if environment variable is present
@@ -97,7 +97,7 @@ func getBypassArgs() []string {
 		// Format: youtube:po_token=web+https://bgutil-ytdlp-pot-provider-aurp.onrender.com/token
 		args = append(args, "--extractor-args", fmt.Sprintf("youtube:po_token=web+%s", poProviderURL))
 	} else {
-		// Fallback player client selection
+		// Fallback client strategy
 		args = append(args, "--extractor-args", "youtube:player_client=web,ios")
 	}
 
